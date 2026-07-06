@@ -28,38 +28,43 @@
 mcp-geo-globe/
 ├── server.py              # MCP 主程序（FastMCP + Three.js HTML 生成）
 ├── requirements.txt       # fastmcp, requests, feedparser, geopy
-└── README.md              # 本文件
+├── README.md              # 本文件
+└── skills/
+    └── geoglobe-analyst/
+        └── SKILL.md       # Skill 大脑（矛盾链追踪 + 叙事冲突标定）
 ```
 
 ## 数据源
 
-| 媒体 | RSS |
-|------|-----|
-| CGTN | world.xml |
-| BBC World | news/world/rss.xml |
-| Al Jazeera | xml/rss/all.xml |
-| NHK World | cat0.xml |
-| China Daily | world_rss.xml |
-| Reuters World | worldNews |
+| 视角 | 媒体 | 国内可达 |
+|------|------|----------|
+| 中国 | CGTN / Xinhua / China Daily / 人民日报 | ✅ |
+| 俄罗斯 | TASS 塔斯社 | ✅ |
+| 日本 | NHK World | ✅ |
+| 韩国 | Yonhap 韩联社 | ✅ |
+| 伊朗 | IRNA 官方通讯社 | ✅ |
+| 以色列 | Jerusalem Post | 🔸 |
+| 拉美 | TeleSUR 南方电视台 | 🔸需代理 |
+| 西方 | BBC / Al Jazeera / Reuters | 🔸需代理 |
 
-> 部分源在国内可能无法直连，已做 try-except 容错，失败不影响其他源。
+> 13 个源并行抓取（ThreadPoolExecutor），国内 5 源直连可达。
 
 ## 地理编码策略
 
-1. **预置城市字典优先**（覆盖 80+ 地缘热点，快且准，规避 Nominatim 限速）
-2. **geopy Nominatim 兜底**（带 1 req/s 限速 + 缓存）
-3. 匹配不到 → 坐标置空（信息流仍显示，地球仪不标点）
+1. **预置城市字典优先**（覆盖 80+ 地缘热点，含中/英/日文关键词）
+2. **两遍匹配**：先跳过发布地 → 匹配事件地，无事件地再回退发布地
+3. **geopy Nominatim 兜底**（带 1 req/s 限速 + 缓存）
+4. 匹配不到 → 坐标置空（信息流仍显示，地球仪不标点）
 
 ## 3D 地球技术栈
 
 - **Three.js 0.160**（CDN importmap，免 token，比 Cesium 更轻量）
 - 地球纹理：three-globe 蓝色弹珠（CDN），加载失败退化程序绘制
-- 标记：小球 + 光柱（CylinderGeometry）+ 顶端光晕，正弦脉冲动画
-- 大气光晕：自定义 ShaderMaterial
-- 星空背景：2500 个随机点
-- 经纬网格线框
+- 标记：彩色光柱按发布源着色（TASS红/IRNA绿/Yonhap蓝/CGTN橙/NHK紫）
+- 光柱环形避让：同地多源自动环形散开，解决集中爆发地重叠
+- 浮动分析标签：正面中央区显示，侧面渐淡，背面隐藏
+- 大气光晕 + 星空背景 + 经纬网格
 - OrbitControls：拖拽旋转 + 滚轮缩放
-- 浮动分析标签：3D 坐标投影到屏幕，跟随地球自转，背面自动隐藏
 
 ## 交互
 
@@ -69,16 +74,32 @@ mcp-geo-globe/
 
 ## 安装与运行
 
-### 1. 依赖已安装到独立 venv
+### 1. 安装依赖
 
+```bash
+pip install fastmcp>=2.3.0 requests feedparser geopy
 ```
-venv: C:\Users\Administrator\.workbuddy\binaries\python\envs\geo-globe
+
+### 2. MCP 注册
+
+将以下配置写入 `~/.workbuddy/mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "geo-globe": {
+      "command": "<python路径>",
+      "args": ["<项目路径>/server.py"]
+    }
+  }
+}
 ```
 
-### 2. MCP 已注册
-
-已写入 `~/.workbuddy/mcp.json` 的 `geo-globe` 条目。
 在 WorkBuddy 连接器管理页点击「Trust」启用。
+
+### 3. 安装 Skill
+
+将 `skills/geoglobe-analyst/` 目录复制到 `{workspace}/.workbuddy/skills/`。
 
 ### 3. 在 WorkBuddy 中使用
 
